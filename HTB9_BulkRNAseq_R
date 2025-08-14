@@ -1,0 +1,102 @@
+if (!require("BiocManager", quietly = TRUE))
+BiocManager::install(version = "3.18")
+BiocManager::install("limma")
+BiocManager::install("pcaExplorer")
+BiocManager::install("Glimma")
+BiocManager::install("DESeq2")
+
+library( "DESeq2" )
+library(dplyr)
+library(ashr)
+browseVignettes("DESeq2")
+
+#Prep and merge raw count and metadata files from both sequencing replicates/batches
+install.packages("openxlsx")
+library("readxl") 
+library("dplyr") 
+library("tibble")
+library("openxlsx")
+
+
+hu_counts <-read_excel("hu_gene_count.xlsx")
+
+View(hu_counts)
+library(readxl)
+htb_gene_count <- read_excel("hu_gene_count.xlsx", 
+                               col_types = c("text", "numeric", "numeric", 
+                               "numeric", "numeric", "numeric", 
+                               "numeric", "numeric", "numeric", 
+                               "numeric", "numeric", "numeric", 
+                               "numeric", "skip", "skip", "skip", 
+                               "skip", "skip", "skip", "skip", "skip", 
+                               "skip", "skip", "skip", "skip", "skip", 
+                               "skip", "text", "text", "numeric", 
+                               "numeric", "text", "numeric", "text", 
+                               "text", "text"))
+View(htb_gene_count)                                                                                                                                              
+write.csv(htb_gene_count, "htb_gene_count.csv")
+htb_data <- read.csv("htb_gene_count.csv", header = T)
+htb_data_sum <- htb_data %>% 
+  group_by(gene_name) %>% 
+  summarise(across(.cols = starts_with("H"),.fns = sum))
+write.csv(htb_data_sum, "htb_data_sum.csv")
+htb_sum_data <- read.csv("htb_data_sum.csv", header = T, row.names = "gene_name")
+
+View(htb_data_sum)
+htb_sum_data <- read.csv("htb_data_sum.csv", header = T, row.names = "gene_name")
+View(htb_sum_data)
+htb_sum_data <- htb_sum_data[,-1]
+View(htb_sum_data)
+
+
+htb_coldata<-read.csv("htb_coldata3_CombinedPhage.csv", header=T)
+View(htb_coldata)
+
+rownames(htb_coldata)<-Coldata$run
+countdata <- as.data.frame(htb_sum_data)
+metadata <- as.data.frame(htb_coldata)
+
+
+#Checking that the read data labels and metadata file have the same number of names
+head(countdata)
+head(metadata)
+names(countdata)
+metadata$ID
+
+
+#remove NAs
+countdata[is.na(countdata)] <- 0
+
+
+#create DESeq data matrix, link count data to meta data
+library( "DESeq2" )
+library(dplyr)
+library(ashr)
+ddsM_HTB_CombinedPhage <- DESeqDataSetFromMatrix(countData = countdata,
+                                 colData = metadata,
+                                 design = ~ Phage_2)
+
+
+#run DESeq2 on all samples: the program includes library size normalization, inf=disable outlier replacement 
+ddsDEM_HTB_CombinedPhage <- DESeq(ddsM_HTB_CombinedPhage, minReplicatesForReplace=Inf)
+
+
+#Normalized values
+HTB_normCounts_CombinedPhage <- counts(ddsDEM_HTB_CombinedPhage, normalized = T)
+View(HTB_normCounts_CombinedPhage)
+write.csv(HTB_normCounts_CombinedPhage, "HTB_Normalized.counts_CombinedPhage.csv")
+
+
+#HTB Combined Phage 4h vs Mock 4h
+res_HTB_CombinedPhage_4h_vs_Mock_4h <- results(ddsDEM_HTB_CombinedPhage, contrast=c("Phage_2", "Phage_4h","Mock_4h"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_HTB_CombinedPhage_4h_vs_Mock_4h)
+write.csv(as.data.frame(res_HTB_CombinedPhage_4h_vs_Mock_4h), file="res_HTB_CombinedPhage_4h_vs_Mock_4h.csv")
+sigsub_HTB_CombinedPhage_4h_vs_Mock_4h<- subset(res_HTB_CombinedPhage_4h_vs_Mock_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_HTB_CombinedPhage_4h_vs_Mock_4h), file="sigsub_HTB_CombinedPhage_4h_vs_Mock_4h.csv")
+
+#HTB Combined Phage 24h vs Mock 24h
+res_HTB_CombinedPhage_24h_vs_Mock_24h <- results(ddsDEM_HTB_CombinedPhage, contrast=c("Phage_2", "Phage_24h","Mock_24h"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_HTB_CombinedPhage_24h_vs_Mock_24h)
+write.csv(as.data.frame(res_HTB_CombinedPhage_24h_vs_Mock_24h), file="res_HTB_CombinedPhage_24h_vs_Mock_24h.csv")
+sigsub_HTB_CombinedPhage_24h_vs_Mock_24h<- subset(res_HTB_CombinedPhage_24h_vs_Mock_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_HTB_CombinedPhage_24h_vs_Mock_24h), file="sigsub_HTB_CombinedPhage_24h_vs_Mock_24h.csv")

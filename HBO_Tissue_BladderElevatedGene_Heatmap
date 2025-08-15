@@ -1,0 +1,77 @@
+#Loading Required Packages
+library("readxl") 
+library("dplyr")
+library("tibble")
+library("openxlsx")
+library("edgeR")
+library("pheatmap")
+library("ggplot2")
+library(plyr)
+
+#importing reference reads file
+ref_tpm <- read_excel("rna_tissue_consensus_HBO_analysis.xlsx")
+view(ref_tpm)
+ref_tpm_df <- as.data.frame(ref_tpm)
+view(ref_tpm_df)
+
+#importing HBO reads file
+hbo_fpkm <- read_excel("HBO_DS_gene_fpkm_only urine.xlsx")
+view(hbo_fpkm)
+hbo_fpkm_df <- as.data.frame(hbo_fpkm)
+view(hbo_fpkm_df)
+
+#importing bladder specific gene list
+bladder_specific <- read_excel("tissue_category_rna_urinary.xls")
+
+#matching and subseting HBO and reference file based on bladder specific list
+ref_tpm_match <- match_df(ref_tpm_df, bladder_specific, on="Gene")
+view(ref_tpm_match)
+hbo_fpkm_match <- match_df(hbo_fpkm_df, bladder_specific, on="Gene")
+view(hbo_fpkm_match)
+
+#remove gene id
+hbo_sub_noid_match <- hbo_fpkm_match[,-1]
+view(hbo_sub_noid_match)
+
+#FPKM to TPM for RNAseq reads - reference is already in TPM
+convert_fpkm_to_tpm <- function(fpkm_matrix) {
+               fpkm_values <- fpkm_matrix[, -1]
+               library_sizes <- colSums(fpkm_values)
+               scaling_factor <- library_sizes /1e6
+               tpm_values <- fpkm_values / scaling_factor}
+
+hbo_tpm_match <- convert_fpkm_to_tpm(hbo_sub_noid_match)
+add_col1 <- as.data.frame(hbo_fpkm_match[,1])
+add_col2 <- as.data.frame(hbo_fpkm_match[,2])
+hbo_tpm_match <-cbind(add_col1,add_col2,hbo_tpm_match)
+view(hbo_tpm_match)
+colnames(hbo_tpm_match)[1] = "Gene"
+colnames(hbo_tpm_match)[2] = "Gene name"
+view(hbo_tpm_match)
+
+#Merge the organoid and reference files
+hbo_tpm_merge_match <- hbo_tpm_match %>% 
+       full_join(ref_tpm_match, by = c("Gene"))
+view(hbo_tpm_merge_match)
+
+#Remove unneeded columns
+hbo_tpm_merge_match <- hbo_tpm_merge_match[,-11]
+view(hbo_tpm_merge_match)
+hbo_tpm_merge_match <- hbo_tpm_merge_match[,-2]
+view(hbo_tpm_merge_match)
+write.csv(hbo_tpm_merge_match,"hbo_tpm_merge_bladderspecific_DS.csv")
+hbo_tpm_merge_match <- read.csv("hbo_tpm_merge_bladderspecific_DS.csv", header = T, row.names = "Gene")
+hbo_tpm_merge_match <- hbo_tpm_merge_match[,-1]
+hbo_tpm_merge_match <- as.data.frame(hbo_tpm_merge_match)
+hbo_tpm_merge_match[is.na(hbo_tpm_merge_match)] <- 0
+view(hbo_tpm_merge_match)
+
+#cpm for both
+hbo_tpm_log_match <- cpm(hbo_tpm_merge_match, log=TRUE)
+view(hbo_tpm_log_match)
+
+#heatmap for both
+plotMDS(hbo_tpm_log_match, col = c(rep("blue",4),rep("black",14)), xlim=c(-10,10), ylim=c(-3,3))
+hbo_heatmap_ref_match <- pheatmap(hbo_tpm_log_match, show_rownames = FALSE,
+                                                                 color = colorRampPalette(c("ghostwhite", "midnightblue"))(50))
+ggsave(hbo_heatmap_ref_match, file = "hbo_heatmap_ref_match.png", dpi = 300, width = 9, height = 9)

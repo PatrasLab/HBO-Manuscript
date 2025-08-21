@@ -1,0 +1,171 @@
+#R Version 4.3.2  CHECK OTHER PACKAGE NUMBERS IN PICTURE ON GITHUB#
+
+# Install packages needed 
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install(version = "3.19")
+BiocManager::install("limma")
+BiocManager::install("pcaExplorer")
+BiocManager::install("Glimma")
+BiocManager::install("DESeq2")
+library( "DESeq2" )
+library(dplyr)
+library("ashr")
+library("readxl") 
+library("dplyr") 
+library("tibble")
+library("openxlsx")
+library("readxl")
+library(EnhancedVolcano)
+
+#Loading Data
+new_hbo_counts <- read_excel("New_HBO_gene_count_gene first.xlsx")
+view(new_hbo_counts)
+write.csv(new_hbo_counts, "new_hbo_counts.csv")
+
+#There are duplicate gene names, so we need to load as NULL which assigns numbers to rows. We then make any gene names that are duplicates "unique" and then reattach the gene name column.
+new_hbo_data <- read.csv(file = "new_hbo_counts.csv", header = T, row.names = NULL)
+names <- make.unique(new_hbo_data$gene_name)
+rownames(new_hbo_data) <- names
+View(new_hbo_data)
+
+#Remove original names
+new_hbo_sum_data <- new_hbo_data[,-1]
+View(new_hbo_sum_data)
+new_hbo_sum_data2 <- new_hbo_sum_data[,-1]
+View(new_hbo_sum_data2)
+
+#Metadata
+hbo_coldata<-read.csv("HBO_metadata.csv", header=T)
+rownames(hbo_coldata)<-hbo_coldata$run
+View(hbo_coldata)
+countdata <- as.data.frame(new_hbo_sum_data2)
+metadata <- as.data.frame(hbo_coldata)
+
+#Checking names are the same
+names(countdata)
+metadata$ID
+
+#DEseq
+ddsM_new_HBO <- DESeqDataSetFromMatrix(countData = countdata,
+                                                                                          colData = metadata,
+                                                                                         design = ~ Treatment_Full)
+ddsDEM_new_HBO <- DESeq(ddsM_new_HBO, minReplicatesForReplace=Inf)
+
+#Normalize Counts
+HBO_new_normCounts <- counts(ddsDEM_new_HBO, normalized = T)
+view(HBO_new_normCounts)
+write.csv(HBO_new_normCounts, "HBO_new_Normalized.counts.csv")
+
+
+#HBO024 4h E. coli vs Urine
+res_new_HBO024_EC_4h_vs_Urine_4h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H24_EC_4","H24_Urine_4"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO024_EC_4h_vs_Urine_4h)
+write.csv(as.data.frame(res_new_HBO024_EC_4h_vs_Urine_4h), file="res_new_HBO024_EC_4h_vs_Urine_4h.csv")
+sigsub_new_HBO024_EC_4h_vs_Urine_4h<- subset(res_new_HBO024_EC_4h_vs_Urine_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO024_EC_4h_vs_Urine_4h), file="sigsub_new_HBO024_EC_4h_vs_Urine_4h.csv")
+res_new_HBO024_EC_4h_vs_Urine_4h_sig <-read.csv("res_new_HBO024_EC_4h_vs_Urine_4h.csv", header = T)
+
+
+#HBO024 4h HP3 vs Urine
+res_new_HBO024_HP3_4h_vs_Urine_4h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H24_HP3_4","H24_Urine_4"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO024_HP3_4h_vs_Urine_4h)
+write.csv(as.data.frame(res_new_HBO024_HP3_4h_vs_Urine_4h), file="res_new_HBO024_HP3_4h_vs_Urine_4h.csv")
+sigsub_new_HBO024_HP3_4h_vs_Urine_4h<- subset(res_new_HBO024_HP3_4h_vs_Urine_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO024_HP3_4h_vs_Urine_4h), file="sigsub_new_HBO024_HP3_4h_vs_Urine_4h.csv")
+res_new_HBO024_HP3_4h_vs_Urine_4h_sig <-read.csv("res_new_HBO024_HP3_4h_vs_Urine_4h.csv", header = T)
+
+
+#HBO024 24h E. coli vs Urine
+res_new_HBO024_EC_24h_vs_Urine_24h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H24_EC_24","H24_Urine_24"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO024_EC_24h_vs_Urine_24h)
+write.csv(as.data.frame(res_new_HBO024_EC_24h_vs_Urine_24h), file="res_new_HBO024_EC_24h_vs_Urine_24h.csv")
+sigsub_new_HBO024_EC_24h_vs_Urine_24h<- subset(res_new_HBO024_EC_24h_vs_Urine_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO024_EC_24h_vs_Urine_24h), file="sigsub_new_HBO024_EC_24h_vs_Urine_24h.csv")
+res_new_HBO024_EC_24h_vs_Urine_24h_sig <-read.csv("res_new_HBO024_EC_24h_vs_Urine_24h.csv", header = T)
+
+
+#HBO024 24h HP3 vs Urine
+res_new_HBO024_HP3_24h_vs_Urine_24h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H24_HP3_24","H24_Urine_24"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO024_HP3_24h_vs_Urine_24h)
+write.csv(as.data.frame(res_new_HBO024_HP3_24h_vs_Urine_24h), file="res_new_HBO024_HP3_24h_vs_Urine_24h.csv")
+sigsub_new_HBO024_HP3_24h_vs_Urine_24h<- subset(res_new_HBO024_HP3_24h_vs_Urine_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO024_HP3_24h_vs_Urine_24h), file="sigsub_new_HBO024_HP3_24h_vs_Urine_24h.csv")
+res_new_HBO024_HP3_24h_vs_Urine_24h_sig <-read.csv("res_new_HBO024_HP3_24h_vs_Urine_24h.csv", header = T)
+
+
+#HBO041 4h E. coli vs Urine
+res_new_HBO041_EC_4h_vs_Urine_4h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H41_EC_4","H41_Urine_4"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO041_EC_4h_vs_Urine_4h)
+write.csv(as.data.frame(res_new_HBO041_EC_4h_vs_Urine_4h), file="res_new_HBO041_EC_4h_vs_Urine_4h.csv")
+sigsub_new_HBO041_EC_4h_vs_Urine_4h<- subset(res_new_HBO041_EC_4h_vs_Urine_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO041_EC_4h_vs_Urine_4h), file="sigsub_new_HBO041_EC_4h_vs_Urine_4h.csv")
+res_new_HBO041_EC_4h_vs_Urine_4h_sig <-read.csv("res_new_HBO041_EC_4h_vs_Urine_4h.csv", header = T)
+
+
+#HBO041 4h HP3 vs Urine
+res_new_HBO041_HP3_4h_vs_Urine_4h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H41_HP3_4","H41_Urine_4"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO041_HP3_4h_vs_Urine_4h)
+write.csv(as.data.frame(res_new_HBO041_HP3_4h_vs_Urine_4h), file="res_new_HBO041_HP3_4h_vs_Urine_4h.csv")
+sigsub_new_HBO041_HP3_4h_vs_Urine_4h<- subset(res_new_HBO041_HP3_4h_vs_Urine_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO041_HP3_4h_vs_Urine_4h), file="sigsub_new_HBO041_HP3_4h_vs_Urine_4h.csv")
+res_new_HBO041_HP3_4h_vs_Urine_4h_sig <-read.csv("res_new_HBO041_HP3_4h_vs_Urine_4h.csv", header = T)
+
+
+#HBO041 24h E. coli vs Urine
+res_new_HBO041_EC_24h_vs_Urine_24h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H41_EC_24","H41_Urine_24"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO041_EC_24h_vs_Urine_24h)
+write.csv(as.data.frame(res_new_HBO041_EC_24h_vs_Urine_24h), file="res_new_HBO041_EC_24h_vs_Urine_24h.csv")
+sigsub_new_HBO041_EC_24h_vs_Urine_24h<- subset(res_new_HBO041_EC_24h_vs_Urine_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO041_EC_24h_vs_Urine_24h), file="sigsub_new_HBO041_EC_24h_vs_Urine_24h.csv")
+res_new_HBO041_EC_24h_vs_Urine_24h_sig <-read.csv("res_new_HBO041_EC_24h_vs_Urine_24h.csv", header = T)
+
+
+#HBO041 24h HP3 vs Urine
+res_new_HBO041_HP3_24h_vs_Urine_24h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H41_HP3_24","H41_Urine_24"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO041_HP3_24h_vs_Urine_24h)
+write.csv(as.data.frame(res_new_HBO041_HP3_24h_vs_Urine_24h), file="res_new_HBO041_HP3_24h_vs_Urine_24h.csv")
+sigsub_new_HBO041_HP3_24h_vs_Urine_24h<- subset(res_new_HBO041_HP3_24h_vs_Urine_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_new_HBO041_HP3_24h_vs_Urine_24h), file="sigsub_new_HBO041_HP3_24h_vs_Urine_24h.csv")
+res_new_HBO041_HP3_24h_vs_Urine_24h_sig <-read.csv("res_new_HBO041_HP3_24h_vs_Urine_24h.csv", header = T)
+
+
+
+
+
+##EC+HP3 vs EC Only
+
+#HBO024 4h EC+HP3 vs HBO024 4h EC Only
+res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H24_ECHP3_4","H24_EC_4"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h)
+write.csv(as.data.frame(res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h), file="res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h.csv")
+sigsub_res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h<- subset(res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h), file="sigsub_res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h.csv")
+res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h_sig <-read.csv("res_new_HBO024_ECHP3_4h_vs_HBO024_EC_4h.csv", header = T)
+
+
+#HBO024 24h EC+HP3 vs HBO024 24h EC Only
+res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H24_ECHP3_24","H24_EC_24"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h)
+write.csv(as.data.frame(res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h), file="res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h.csv")
+sigsub_res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h<- subset(res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h), file="sigsub_res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h.csv")
+res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h_sig <-read.csv("res_new_HBO024_ECHP3_24h_vs_HBO024_EC_24h.csv", header = T)
+
+
+#HBO041 4h EC+HP3 vs HBO041 4h EC Only
+res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H41_ECHP3_4","H41_EC_4"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h)
+write.csv(as.data.frame(res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h), file="res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h.csv")
+sigsub_res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h<- subset(res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h), file="sigsub_res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h.csv")
+res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h_sig <-read.csv("res_new_HBO041_ECHP3_4h_vs_HBO041_EC_4h.csv", header = T)
+
+
+#HBO041 24h EC+HP3 vs HBO041 24h EC Only
+res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h <- results(ddsDEM_new_HBO, contrast=c("Treatment_Full", "H41_ECHP3_24","H41_EC_24"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h)
+write.csv(as.data.frame(res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h), file="res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h.csv")
+sigsub_res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h<- subset(res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h), file="sigsub_res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h.csv")
+res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h_sig <-read.csv("res_new_HBO041_ECHP3_24h_vs_HBO041_EC_24h.csv", header = T)

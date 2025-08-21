@@ -1,0 +1,76 @@
+# Install packages needed 
+BiocManager::install(version = "3.18")
+BiocManager::install("limma")
+BiocManager::install("pcaExplorer")
+BiocManager::install("Glimma")
+BiocManager::install("DESeq2")
+install.packages("openxlsx")
+
+library( "DESeq2" )
+library(dplyr)
+library(ashr)
+library("readxl") 
+library("dplyr") 
+library("tibble")
+library("openxlsx")
+
+
+#Prep raw count and metadata files
+mouse_counts <- read_excel("ms_gene_count.xlsx")
+view(mouse_counts)
+write.csv(mouse_counts, "mouse_counts.csv")
+mouse_data <- read.csv("mouse_counts.csv", header = T)
+
+mouse_data_sum <- mouse_data %>%
+  + group_by(gene_name) %>%
+  + summarise(across(.cols = c(MM_M_4h_1, MM_M_4h_2, MM_E_4h_1, MM_E_4h_2, MM_E_4h_3, MM_H_4h_1, MM_H_4h_2, MM_H_4h_3, MM_M_24h_1, MM_M_24h_2, MM_E_24h_1, MM_E_24h_2, MM_H_24h_1, MM_H_24h_2, FM_M_4h_1, FM_M_4h_2, FM_E_4h_1, FM_E_4h_2, FM_E_4h_3, FM_H_4h_1, FM_H_4h_2, FM_H_4h_3, FM_M_24h_1, FM_M_24h_2, FM_E_24h_1, FM_E_24h_2, FM_H_24h_1, FM_H_24h_2),.fns =sum))
+write.csv(mouse_data_sum, "mouse_data_sum.csv")
+sum_data <- read.csv("mouse_data_sum.csv", header = T, row.names = "gene_name")
+view(sum_data)
+sum_data <- sum_data[,-1]
+view(sum_data)
+ms_coldata3<-read.csv("ms_coldata3.csv", header=T)
+View(ms_coldata3)
+
+rownames(ms_coldata3)<-ms_coldata3$run
+countdata <- as.data.frame(sum_data)
+metadata <- as.data.frame(ms_coldata3)
+
+#Checking that the read data labels and metadata file have the same number of names
+head(countdata)
+head(metadata)
+names(countdata)
+metadata$ID
+
+#remove NAs
+countdata[is.na(countdata)] <- 0
+View(ms_coldata3)
+
+#create DESeq data matrix, link count data to meta data
+ddsM_mouse4 <- DESeqDataSetFromMatrix(countData = countdata,
+                                      colData = metadata,
+                                      design = ~ Treatment_4)
+
+#run DESeq2 on all samples: the program includes library size normalization, inf=disable outlier replacement                                                                
+ddsDEM_mouse4 <- DESeq(ddsM_mouse4, minReplicatesForReplace=Inf)
+
+#Normalized Counts
+mouse_normCounts4 <- counts(ddsDEM_mouse4, normalized = T)
+view(mouse_normCounts4)
+write.csv(mouse_normCounts4, "Ms_Normalized_MandF_Pooled_Phage_Pooled.counts.csv")
+
+#Pull out only significant DEGs that have a corrected p-value of < 0.05 (default is 0.1)
+
+#Male and Female Pooled Phage 4h vs Male and Female 4h Mock Mouse
+res_Phage_4h_vs_mock_4h <- results(ddsDEM_mouse4, contrast=c("Treatment_4", "Phage_4h","Mock_4h"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_Phage_4h_vs_mock_4h)
+write.csv(as.data.frame(res_Phage_4h_vs_mock_4h), file="res_Phage_4h_vs_mock_4h.csv")
+sigsub_Phage_4h_vs_mock_4h<- subset(res_Phage_4h_vs_mock_4h, padj < 0.05)
+write.csv(as.data.frame(sigsub_Phage_4h_vs_mock_4h), file="sigsub_Phage_4h_vs_mock_4h.csv")
+
+#Male and Female Pooled Phage 24h vs Male and Female 24h Mock Mouse
+res_Phage_24h_vs_mock_24h <- results(ddsDEM_mouse4, contrast=c("Treatment_4", "Phage_24h","Mock_24h"), alpha = 0.05, cooksCutoff=FALSE, lfcThreshold = 1)
+summary(res_Phage_24h_vs_mock_24h)
+write.csv(as.data.frame(res_Phage_24h_vs_mock_24h), file="res_Phage_24h_vs_mock_24h.csv")
+sigsub_Phage_24h_vs_mock_24h<- subset(res_Phage_24h_vs_mock_24h, padj < 0.05)
+write.csv(as.data.frame(sigsub_Phage_24h_vs_mock_24h), file="sigsub_Phage_24h_vs_mock_24h.csv")

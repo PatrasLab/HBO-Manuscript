@@ -1,0 +1,116 @@
+# Install packages needed 
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install(version = "3.18")
+BiocManager::install("limma")
+BiocManager::install("pcaExplorer")
+BiocManager::install('PCAtools')
+BiocManager::install("Glimma")
+BiocManager::install("DESeq2")
+BiocManager::install("ReportingTools")
+BiocManager::install("regionReport")
+BiocManager::install("iSEE")
+BiocManager::install('EnhancedVolcano')
+BiocManager::install('biocLite')
+
+install.packages("devtools")
+install.packages("VennDiagram")
+
+library( "DESeq2" )
+library(dplyr)
+library("ashr")
+library("readxl") 
+library("dplyr") 
+library("tibble")
+library("openxlsx")
+library(pheatmap)
+library(ggplot2)
+library(PCAtools)
+library("RColorBrewer")
+library(EnhancedVolcano)
+library(devtools)
+library(VennDiagram)
+library(limma)
+library(DESeq2)
+library(rlog)
+
+#PCA plot 
+#Step one is transforming the normalized count 
+#for small data sets (n <30), rlog is a better method of data transformation 
+#rlog outperforms VST when there is a wide range of sequencing depth across samples (an order of magnitude)
+# Going to re-do transformation with rlog
+
+hbo_ld <- rlog(ddsDEM_new_HBO, blind = FALSE)
+head(assay(hbo_ld), 3)
+
+#before PCA plot, heat map of sample distances to assess overall similarity between samples 
+hbo_sampleDists <- dist(t(assay(hbo_ld)))
+hbo_sampleDists
+
+hbo_sampleDistMatrix <- as.matrix( hbo_sampleDists )
+rownames(hbo_sampleDistMatrix) <- paste(hbo_ld$Line)
+colnames(hbo_sampleDistMatrix) <- colData(ddsDEM_new_HBO)$ID
+
+#Separating and reordering HBO024 and HBO041
+hbo_ld_24 <- hbo_ld[,1:24]
+head(assay(hbo_ld_24), 5)
+hbo_ld_24_reorder1 <- hbo_ld_24
+hbo_ld_24_reorder1$Time <- factor(hbo_ld_24_reorder1$Time, levels = c("4h", "24h"))
+hbo_ld_24_reorder2 <- hbo_ld_24_reorder1
+hbo_ld_24_reorder2$Treatment <- factor(hbo_ld_24_reorder2$Treatment, levels = c("Urine", "HP3", "EC", "EC+HP3"))
+
+hbo_ld_41 <- hbo_ld[,25:48]
+head(assay(hbo_ld_41), 5)
+hbo_ld_41_reorder1 <- hbo_ld_41
+hbo_ld_41_reorder1$Time <- factor(hbo_ld_41_reorder1$Time, levels = c("4h", "24h"))
+hbo_ld_41_reorder2 <- hbo_ld_41_reorder1
+hbo_ld_41_reorder2$Treatment <- factor(hbo_ld_41_reorder2$Treatment, levels = c("Urine", "HP3", "EC", "EC+HP3"))
+
+#PCA plot after data transformation 
+plotPCA(hbo_ld_24_reorder2, intgroup=c("Treatment", "Time"))
+
+#Can also customize PCA plot using ggplot function
+pcaData24 <- plotPCA(hbo_ld_24_reorder2, intgroup=c("Treatment", "Time"), returnData=TRUE)
+percentVar <- round(100 * attr(pcaData24, "percentVar"))
+PCA_plot_24 <- ggplot(pcaData24, aes(PC1, PC2, color=Treatment, shape=Time)) +
+  geom_point(size = 4, alpha= 0.70) +
+  scale_color_manual(labels=c("Urine"="Urine", "HP3"="Phage HP3", "EC"="E. coli", "EC+HP3"="E. coli + Phage HP3"), values =c("#FBA72AFF", "#BDC0B7FF", "#CB7A5CFF", "#5785C1FF")) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  coord_fixed() +
+  # geom_text_repel(label=paste(metadata$ID), size = 4, max.overlaps = Inf) + 
+  xlim(-40,50) + ylim(-40,40) +
+  theme_linedraw() + #start with a custom theme
+  theme(axis.line = element_line(colour = "black"),
+        panel.border = element_blank(),legend.title = element_text(face="bold",size=14), legend.text = element_text(size=12),
+        panel.background = element_blank(), axis.text.x = element_text(size = 14), legend.spacing.y = unit(0.2, 'cm'), legend.position = 'right', 
+        axis.text.y = element_text(size = 14), axis.title=element_text(size = 14))
+PCA_plot_24
+
+#publication quality tiff export
+ggsave(PCA_plot_24, file="HBO024_PCA_Draft_Reordered.tiff", dpi = 300)
+
+
+#PCA plot of HBO041 
+plotPCA(hbo_ld_41, intgroup=c("Treatment", "Time"))
+
+#Can also customize PCA plot using ggplot function
+pcaData41 <- plotPCA(hbo_ld_41_reorder2, intgroup=c("Treatment", "Time"), returnData=TRUE)
+percentVar <- round(100 * attr(pcaData41, "percentVar"))
+PCA_plot_41 <- ggplot(pcaData41, aes(PC1, PC2, color=Treatment, shape=Time)) +
+  geom_point(size = 4, alpha= 0.70) +
+  scale_color_manual(labels=c("Urine"="Urine", "HP3"="Phage HP3", "EC"="E. coli", "EC+HP3"="E. coli + Phage HP3"), values =c("#FBA72AFF", "#BDC0B7FF", "#CB7A5CFF", "#5785C1FF")) +
+  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
+  coord_fixed() +
+  # geom_text_repel(label=paste(metadata$ID), size = 4, max.overlaps = Inf) + 
+  xlim(-50,80) + ylim(-60,60) +
+  theme_linedraw() + #start with a custom theme
+  theme(axis.line = element_line(colour = "black"),
+        panel.border = element_blank(),legend.title = element_text(face="bold",size=14), legend.text = element_text(size=12),
+        panel.background = element_blank(), axis.text.x = element_text(size = 14), legend.spacing.y = unit(0.2, 'cm'), legend.position = 'right', 
+        axis.text.y = element_text(size = 14), axis.title=element_text(size = 14))
+PCA_plot_41
+
+#publication quality tiff export
+ggsave(PCA_plot_41, file="HBO041_PCA_Reordered.tiff", dpi = 300)
